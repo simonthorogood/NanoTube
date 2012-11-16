@@ -51,6 +51,7 @@
     <Compile Include="MetricTests.cs" />
     <Compile Include="Net\PacketBuilderTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Net\UdpMessengerTests.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Collections\" />

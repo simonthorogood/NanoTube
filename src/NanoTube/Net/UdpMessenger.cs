@@ -1,4 +1,6 @@
-﻿namespace NanoTube.Net
+﻿using NLog;
+
+namespace NanoTube.Net
 {
 	using System;
 	using System.Collections.Generic;
@@ -14,7 +16,8 @@
 	/// specific number of packets at a time over an infinite IEnumerable.
 	/// </summary>
 	public class UdpMessenger : IDisposable
-	{		
+	{
+		private static readonly Logger _logger = LogManager.GetCurrentClassLogger();
 		private readonly static SimpleObjectPool<SocketAsyncEventArgs> _eventArgsPool 
 			= new SimpleObjectPool<SocketAsyncEventArgs>(30, pool => new PoolAwareSocketAsyncEventArgs(pool));
 		private readonly int _port;
@@ -81,19 +84,23 @@
 
 			try
 			{
-				data.RemoteEndPoint = _ipBasedEndpoint ?? new IPEndPoint(Dns.GetHostAddresses(_hostNameOrAddress)[0], _port); //only DNS resolve if we were given a hostname
+				var resolvedIPEndpoint = _ipBasedEndpoint ?? new IPEndPoint(Dns.GetHostAddresses(_hostNameOrAddress)[0], _port); //only DNS resolve if we were given a hostname
+				data.RemoteEndPoint = resolvedIPEndpoint;
 				data.SendPacketsElements = metrics.ToMaximumBytePackets()
 					.Select(bytes => new SendPacketsElement(bytes, 0, bytes.Length, true))
 					.ToArray();
 
-				//_client.Client.NoDelay = true;
+				if (!_client.Client.Connected)
+					_client.Connect(resolvedIPEndpoint);
 				_client.Client.SendPacketsAsync(data);
 
 				//Write-Debug "Wrote $(byteBlock.length) bytes to $server:$port"
 			}
 			//fire and forget, so just eat intermittent failures / exceptions
-			catch
-			{ }
+			catch(Exception exception)
+			{
+				_logger.ErrorException("Error sending to UDP", exception);
+			}
 		}
 
 		/// <summary>	Streams the given metrics in the IEnumerable, terminating when the IEnumerable does. </summary>
@@ -125,7 +132,11 @@
 			{
 				var data = _eventArgsPool.Pop();
 				//firehose alert! -- keep it moving!
-				if (null == data) { continue; }
+				if (null == data)
+				{
+					_logger.Error("No arg found in pool");
+					continue;
+				}
 
 				try
 				{
@@ -138,9 +149,10 @@
 
 					//Write-Debug "Wrote $(byteBlock.length) bytes to $server:$port"
 				}
-				//fire and forget, so just eat intermittent failures / exceptions
-				catch
-				{ }
+				catch(Exception exception)
+				{
+					_logger.ErrorException("Error sending to UDP", exception);
+				}
 			}
 		}
 	}

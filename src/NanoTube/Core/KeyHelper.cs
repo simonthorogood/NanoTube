@@ -14,7 +14,7 @@ namespace NanoTube
 		private const string _badChars = "! ;:/()\\#%$^*";
 		private readonly static SimpleObjectPool<StringBuilder> _builderPool 
 			= new SimpleObjectPool<StringBuilder>(1, pool => new StringBuilder(200));
-		private readonly static Regex _validKey = new Regex(@"^[^!\s;:/\.\(\)\\#%\$\^\*]+$", RegexOptions.Compiled);
+		private readonly static Regex _validKey = new Regex(@"^[^!\s;:/\(\)\\#%\$\^\*]+$", RegexOptions.Compiled);
 
 		/// <summary>	A string extension method that query if 'key' is valid key. </summary>
 		/// <param name="key">	The key to act on. </param>
